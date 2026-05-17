@@ -1,7 +1,7 @@
 package net.thomilist.dimensionalinventories.module.builtin.status;
 
-import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.server.level.ServerPlayer;
 import net.thomilist.dimensionalinventories.module.base.player.PlayerModuleState;
 import net.thomilist.dimensionalinventories.util.ExperienceHelper;
 
@@ -18,12 +18,12 @@ public class StatusModuleState
     public float saturationLevel = 5.0f;
     public float exhaustion = 0.0f;
     public float health = 20.0f;
-    public Collection<StatusEffectInstance> statusEffects = new ArrayList<>();
+    public Collection<MobEffectInstance> statusEffects = new ArrayList<>();
 
     public StatusModuleState()
     { }
 
-    public StatusModuleState( final ServerPlayerEntity player )
+    public StatusModuleState( final ServerPlayer player )
     {
         this.loadFromPlayer( player );
     }
@@ -35,33 +35,33 @@ public class StatusModuleState
     }
 
     @Override
-    public void applyToPlayer( final ServerPlayerEntity player )
+    public void applyToPlayer( final ServerPlayer player )
     {
         ExperienceHelper.setExperience( player, this.experiencePoints );
         player.setScore( this.score );
-        player.getHungerManager().setFoodLevel( this.foodLevel );
-        player.getHungerManager().setSaturationLevel( this.saturationLevel );
-        player.getHungerManager().setExhaustion( this.exhaustion );
+        player.getFoodData().setFoodLevel( this.foodLevel );
+        player.getFoodData().setSaturation( this.saturationLevel );
+        player.getFoodData().setExhaustion( this.exhaustion );
         player.setHealth( this.health );
 
-        player.clearStatusEffects();
+        player.removeAllEffects();
 
-        for ( final StatusEffectInstance statusEffect : this.statusEffects )
+        for ( final MobEffectInstance statusEffect : this.statusEffects )
         {
-            player.addStatusEffect( statusEffect );
+            player.addEffect( statusEffect );
         }
     }
 
     @Override
-    public void loadFromPlayer( final ServerPlayerEntity player )
+    public void loadFromPlayer( final ServerPlayer player )
     {
         this.experiencePoints = ExperienceHelper.getTotalExperience_Meridanus( player );
         this.score = player.getScore();
-        this.foodLevel = player.getHungerManager().getFoodLevel();
-        this.saturationLevel = player.getHungerManager().getSaturationLevel();
-        this.exhaustion = player.getHungerManager().getExhaustion();
+        this.foodLevel = player.getFoodData().getFoodLevel();
+        this.saturationLevel = player.getFoodData().getSaturationLevel();
+        this.exhaustion = player.getFoodData().getExhaustionLevel();
         this.health = player.getHealth();
 
-        this.statusEffects = player.getStatusEffects();
+        this.statusEffects = player.getActiveEffects();
     }
 }

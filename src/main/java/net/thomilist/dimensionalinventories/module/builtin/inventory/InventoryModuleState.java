@@ -1,10 +1,10 @@
 package net.thomilist.dimensionalinventories.module.builtin.inventory;
 
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.inventory.EnderChestInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.collection.DefaultedList;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.PlayerEnderChestContainer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.core.NonNullList;
 import net.thomilist.dimensionalinventories.compatibility.Compat;
 import net.thomilist.dimensionalinventories.module.base.player.PlayerModuleState;
 import net.thomilist.dimensionalinventories.util.ItemStackListHelper;
@@ -14,24 +14,24 @@ import java.lang.reflect.Type;
 public class InventoryModuleState
     implements PlayerModuleState
 {
-    private static final int ARMOR_SIZE = PlayerInventory.ARMOR_SLOTS.length;
-    private static final int MAIN_SIZE = PlayerInventory.MAIN_SIZE;
+    private static final int ARMOR_SIZE = Inventory.ALL_ARMOR_SLOTS.length;
+    private static final int MAIN_SIZE = Inventory.INVENTORY_SIZE;
     private static final int OFF_HAND_SIZE = 1;
-    private static final int ENDER_CHEST_SIZE = new EnderChestInventory().size();
+    private static final int ENDER_CHEST_SIZE = new PlayerEnderChestContainer().getContainerSize();
 
-    public final DefaultedList<ItemStack> armor = DefaultedList.ofSize(
+    public final NonNullList<ItemStack> armor = NonNullList.withSize(
         InventoryModuleState.ARMOR_SIZE,
         ItemStack.EMPTY
     );
-    public final DefaultedList<ItemStack> main = DefaultedList.ofSize(
+    public final NonNullList<ItemStack> main = NonNullList.withSize(
         InventoryModuleState.MAIN_SIZE,
         ItemStack.EMPTY
     );
-    public final DefaultedList<ItemStack> offHand = DefaultedList.ofSize(
+    public final NonNullList<ItemStack> offHand = NonNullList.withSize(
         InventoryModuleState.OFF_HAND_SIZE,
         ItemStack.EMPTY
     );
-    public final DefaultedList<ItemStack> enderChest = DefaultedList.ofSize(
+    public final NonNullList<ItemStack> enderChest = NonNullList.withSize(
         InventoryModuleState.ENDER_CHEST_SIZE,
         ItemStack.EMPTY
     );
@@ -39,7 +39,7 @@ public class InventoryModuleState
     public InventoryModuleState()
     { }
 
-    public InventoryModuleState( final ServerPlayerEntity player )
+    public InventoryModuleState( final ServerPlayer player )
     {
         this.loadFromPlayer( player );
     }
@@ -51,24 +51,24 @@ public class InventoryModuleState
     }
 
     @Override
-    public void applyToPlayer( final ServerPlayerEntity player )
+    public void applyToPlayer( final ServerPlayer player )
     {
         ItemStackListHelper.assignItemStacks( this.armor, player.getInventory().armor );
-        ItemStackListHelper.assignItemStacks( this.main, player.getInventory().main );
-        ItemStackListHelper.assignItemStacks( this.offHand, player.getInventory().offHand );
+        ItemStackListHelper.assignItemStacks( this.main, player.getInventory().items );
+        ItemStackListHelper.assignItemStacks( this.offHand, player.getInventory().offhand );
         ItemStackListHelper.assignItemStacks( this.enderChest, Compat.SIMPLE_INVENTORY.getHeldStacks(player.getEnderChestInventory()) );
     }
 
     @Override
-    public void loadFromPlayer( final ServerPlayerEntity player )
+    public void loadFromPlayer( final ServerPlayer player )
     {
         ItemStackListHelper.assignItemStacks( player.getInventory().armor, this.armor );
-        ItemStackListHelper.assignItemStacks( player.getInventory().main, this.main );
-        ItemStackListHelper.assignItemStacks( player.getInventory().offHand, this.offHand );
+        ItemStackListHelper.assignItemStacks( player.getInventory().items, this.main );
+        ItemStackListHelper.assignItemStacks( player.getInventory().offhand, this.offHand );
         ItemStackListHelper.assignItemStacks( Compat.SIMPLE_INVENTORY.getHeldStacks(player.getEnderChestInventory()), this.enderChest );
     }
 
-    public DefaultedList<ItemStack> section( final InventorySection label )
+    public NonNullList<ItemStack> section( final InventorySection label )
     {
         return switch ( label )
         {

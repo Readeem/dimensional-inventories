@@ -1,6 +1,6 @@
 package net.thomilist.dimensionalinventories.module.builtin.legacy.status;
 
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
 import net.thomilist.dimensionalinventories.lostandfound.LostAndFound;
 import net.thomilist.dimensionalinventories.module.base.ModuleBase;
 import net.thomilist.dimensionalinventories.module.base.player.StatefulPlayerModule;
@@ -19,7 +19,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 /**
- * @deprecated This is only intended for use during migration of old data of storage version 1. When loading or saving
+ * @deprecated This is only intended for use during migration of old data of storage version 1. Condition loading or saving
  * new data, use {@link StatusModule} instead.
  */
 @Deprecated
@@ -42,7 +42,7 @@ public final class StatusModule_SV1
     }
 
     @Override
-    public StatusModuleState newInstance( final ServerPlayerEntity player )
+    public StatusModuleState newInstance( final ServerPlayer player )
     {
         return new StatusModuleState();
     }
@@ -60,7 +60,7 @@ public final class StatusModule_SV1
     }
 
     @Override
-    public void load( final ServerPlayerEntity player, final DimensionPool dimensionPool )
+    public void load( final ServerPlayer player, final DimensionPool dimensionPool )
     {
         final Path saveFile = ModuleHelper_SV1.saveFile( dimensionPool, player );
         final List<String> lines;
@@ -98,7 +98,7 @@ public final class StatusModule_SV1
     }
 
     @Override
-    public void save( final ServerPlayerEntity player, final DimensionPool dimensionPool )
+    public void save( final ServerPlayer player, final DimensionPool dimensionPool )
     {
         // Intentionally not implemented
         ModuleHelper_SV1.ThrowOnDeprecatedSave( StatusModule.class );

@@ -1,0 +1,28 @@
+modLoader = "javafml"
+loaderVersion = "[4,)"
+license = "MIT"
+
+[[mods]]
+modId = "dimensionalinventories"
+version = "${version}"
+displayName = "Dimensional Inventories"
+description = "Keep separate inventories across pools of dimensions."
+authors = "Thomilist"
+logoFile = "assets/dimensionalinventories/icon.png"
+
+[[mixins]]
+config = "dimensional-inventories.mixins.json"
+
+[[dependencies.dimensionalinventories]]
+modId = "neoforge"
+type = "required"
+versionRange = "[${neoforge_version},)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.dimensionalinventories]]
+modId = "minecraft"
+type = "required"
+versionRange = "[${minecraft_version}]"
+ordering = "NONE"
+side = "BOTH"

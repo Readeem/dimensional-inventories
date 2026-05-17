@@ -1,5 +1,5 @@
 plugins {
-	id 'fabric-loom' version "${loom_version}"
+	id 'dev.architectury.loom' version "${loom_version}"
 	id 'maven-publish'
 }
 
@@ -17,44 +17,14 @@ def interactiveRunPath = "run/interactive"
 def interactiveServerRunPath = interactiveRunPath + "/server"
 def interactiveClientRunPath = interactiveRunPath + "/client"
 
-def gametestRunPath = "run/gametest"
-def gametestServerRunPath = gametestRunPath + "/server"
-def gametestClientRunPath = gametestRunPath + "/client"
-
-
 loom {
-	splitEnvironmentSourceSets()
-}
+	silentMojangMappingsLicense()
 
-sourceSets {
-	gametest {
-		compileClasspath += main.compileClasspath
-		runtimeClasspath += main.runtimeClasspath
-	}
-	gametestClient {
-		compileClasspath += main.compileClasspath
-		runtimeClasspath += main.runtimeClasspath
-		compileClasspath += client.compileClasspath
-		runtimeClasspath += client.runtimeClasspath
-		compileClasspath += gametest.compileClasspath
-		runtimeClasspath += gametest.runtimeClasspath
-	}
-}
-
-loom {
 	mods {
 		"dimensional-inventories" {
 			sourceSet sourceSets.main
-			sourceSet sourceSets.client
-		}
-		"dimensional-inventories-gametest" {
-			sourceSet sourceSets.gametest
-			sourceSet sourceSets.gametestClient
 		}
 	}
-
-    createRemapConfigurations( sourceSets.gametest )
-    createRemapConfigurations( sourceSets.gametestClient )
 
 	runs {
 		server {
@@ -64,41 +34,6 @@ loom {
 		client {
 			runDir(interactiveClientRunPath)
 		}
-
-		gametestServer {
-			server()
-			name "Game Test Server"
-			vmArg "-Dfabric-api.gametest"
-			vmArg "-Dfabric-api.gametest.report-file=report/junit.xml"
-			runDir(gametestServerRunPath)
-			source sourceSets.gametest
-		}
-
-		gametestClient {
-			client()
-			name "Game Test Client"
-			//vmArg "-Dfabric-api.gametest.structures.output-dir=${file("src/gametest/resources/data/dimensional-inventories-gametest/gametest/structures")}"
-			runDir(gametestClientRunPath)
-			source sourceSets.gametestClient
-		}
-	}
-
-    accessWidenerPath = file("src/gametest/resources/dimensional-inventories-gametest.accesswidener")
-}
-
-tasks.register("cleanGametestServer") {
-	group = "gametest"
-	doLast {
-		delete(gametestServerRunPath)
-	}
-}
-
-tasks.register("acceptGametestServerEula") {
-	group = "gametest"
-	mustRunAfter(cleanGametestServer)
-	doLast {
-		mkdir(gametestServerRunPath)
-		new File(gametestServerRunPath, "eula.txt").text = "eula=true"
 	}
 }
 
@@ -107,18 +42,6 @@ tasks.register("acceptInteractiveServerEula") {
 		mkdir(interactiveServerRunPath)
 		new File(interactiveServerRunPath, "eula.txt").text = "eula=true"
 	}
-}
-
-tasks.register("gametestJar", Jar) {
-	group = "build"
-	from sourceSets.gametest.output
-	archiveClassifier = "gametest"
-}
-
-tasks.register("gametestSourcesJar", Jar) {
-	group = "build"
-	from sourceSets.gametest.allSource
-	archiveClassifier = "gametest-sources"
 }
 
 tasks.register("creativeDimensionDatapackZip", Zip) {
@@ -136,16 +59,11 @@ tasks.register("creativeDimensionDatapackZip", Zip) {
 }
 
 tasks.build {
-	dependsOn(gametestJar)
-	dependsOn(gametestSourcesJar)
 	dependsOn(creativeDimensionDatapackZip)
 }
 
 tasks.javadoc {
-	source += sourceSets.client.allJava
-	source += sourceSets.gametest.allJava
 	source += sourceSets.test.allJava
-    classpath += sourceSets.gametest.compileClasspath
 }
 
 runClient.configure {
@@ -157,35 +75,18 @@ runServer.configure {
 	dependsOn(acceptInteractiveServerEula)
 }
 
-runGametestClient.configure {
-	dependsOn(build)
-}
-
-runGametestServer.configure {
-	dependsOn(build)
-	dependsOn(cleanGametestServer, acceptGametestServerEula)
-}
-
 repositories {
-	// Add repositories to retrieve artifacts from in here.
-	// You should only use this when depending on other mods because
-	// Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
-	// See https://docs.gradle.org/current/userguide/declaring_repositories.html
-	// for more information about repositories.
-    maven {
-        name = "Modrinth"
-        url = "https://api.modrinth.com/maven"
-    }
+	maven {
+		name = 'NeoForged'
+		url = 'https://maven.neoforged.net/releases/'
+	}
 }
 
 dependencies {
 	// To change the versions see the gradle.properties file
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
-	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-
-	// Fabric API. This is technically optional, but you probably want it anyway.
-	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+	mappings loom.officialMojangMappings()
+	neoForge "net.neoforged:neoforge:${project.neoforge_version}"
 
 	// Google Gson for JSON parsing and writing
 	api "com.google.code.gson:gson:${project.gson_version}"
@@ -193,28 +94,19 @@ dependencies {
 	// Apache Commons IO to move entire directories
 	implementation "commons-io:commons-io:${project.apache_commons_io_version}"
 
-	gametestImplementation sourceSets.main.output
-	gametestClientImplementation sourceSets.main.output
-	gametestClientImplementation sourceSets.client.output
-	gametestClientImplementation sourceSets.gametest.output
-
-    modGametestImplementation "maven.modrinth:carpet:${project.carpet_version}"
 }
 
 tasks.withType(ProcessResources).configureEach {
 	inputs.property("java_version", project.target_java_version)
 	inputs.property("version", project.version)
 	inputs.property("minecraft_version", project.minecraft_version)
-	inputs.property("loader_version", project.loader_version)
-	inputs.property("carpet_version", project.carpet_version)
 	filteringCharset = "UTF-8"
 
-	filesMatching("fabric.mod.json") {
+	filesMatching("META-INF/neoforge.mods.toml") {
 		expand "java_version": project.target_java_version,
 				"version": project.version,
 				"minecraft_version": project.minecraft_version,
-                "loader_version": project.loader_version,
-                "carpet_version": project.carpet_version
+				"neoforge_version": project.neoforge_version
 	}
 
 	filesMatching("*.mixins.json") {

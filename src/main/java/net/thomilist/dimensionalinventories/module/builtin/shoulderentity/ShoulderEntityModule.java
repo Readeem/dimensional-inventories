@@ -1,7 +1,7 @@
 package net.thomilist.dimensionalinventories.module.builtin.shoulderentity;
 
 import com.google.gson.Gson;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
 import net.thomilist.dimensionalinventories.module.base.JsonModule;
 import net.thomilist.dimensionalinventories.module.base.ModuleBase;
 import net.thomilist.dimensionalinventories.module.base.player.JsonPlayerModule;
@@ -39,7 +39,7 @@ public final class ShoulderEntityModule
     }
 
     @Override
-    public ShoulderEntityModuleState newInstance( final ServerPlayerEntity player )
+    public ShoulderEntityModuleState newInstance( final ServerPlayer player )
     {
         return new ShoulderEntityModuleState( player );
     }

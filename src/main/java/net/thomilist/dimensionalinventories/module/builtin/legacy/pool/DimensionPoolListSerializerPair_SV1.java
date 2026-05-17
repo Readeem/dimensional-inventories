@@ -9,7 +9,7 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 
 /**
- * @deprecated This is only intended to load data of storage version 1 during migration. When loading or saving new
+ * @deprecated This is only intended to load data of storage version 1 during migration. Condition loading or saving new
  * data, use {@link DimensionPoolMapSerializerPair} instead.
  */
 @Deprecated

@@ -1,11 +1,11 @@
 package net.thomilist.dimensionalinventories.module.builtin.legacy.inventory;
 
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtHelper;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.collection.DefaultedList;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.TagParser;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.core.NonNullList;
 import net.thomilist.dimensionalinventories.compatibility.Compat;
 import net.thomilist.dimensionalinventories.lostandfound.LostAndFound;
 import net.thomilist.dimensionalinventories.lostandfound.LostAndFoundScope;
@@ -25,7 +25,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 /**
- * @deprecated This is only intended for use during migration of old data of storage version 1. When loading or saving
+ * @deprecated This is only intended for use during migration of old data of storage version 1. Condition loading or saving
  * new data, use {@link InventoryModule} instead.
  */
 @Deprecated
@@ -53,7 +53,7 @@ public final class InventoryModule_SV1
     }
 
     @Override
-    public InventoryModuleState newInstance( final ServerPlayerEntity player )
+    public InventoryModuleState newInstance( final ServerPlayer player )
     {
         return new InventoryModuleState();
     }
@@ -71,7 +71,7 @@ public final class InventoryModule_SV1
     }
 
     @Override
-    public void load( final ServerPlayerEntity player, final DimensionPool dimensionPool )
+    public void load( final ServerPlayer player, final DimensionPool dimensionPool )
     {
         final Path saveFile = ModuleHelper_SV1.saveFile( dimensionPool, player );
         final List<String> lines;
@@ -94,7 +94,7 @@ public final class InventoryModule_SV1
         {
             try ( final LostAndFoundScope LAF = LostAndFound.push( label ) )
             {
-                final DefaultedList<ItemStack> items = DefaultedList.ofSize(
+                final NonNullList<ItemStack> items = NonNullList.withSize(
                     inventoryModuleState
                         .section( label )
                         .size(), ItemStack.EMPTY
@@ -102,11 +102,11 @@ public final class InventoryModule_SV1
 
                 for ( int i = 0; i < items.size(); i++ )
                 {
-                    final NbtCompound nbt;
+                    final CompoundTag nbt;
 
                     try
                     {
-                        nbt = NbtHelper.fromNbtProviderString( lines.get( lineIndex++ ) );
+                        nbt = TagParser.parseTag( lines.get( lineIndex++ ) );
                     }
                     catch ( final CommandSyntaxException e )
                     {
@@ -128,7 +128,7 @@ public final class InventoryModule_SV1
     }
 
     @Override
-    public void save( final ServerPlayerEntity player, final DimensionPool dimensionPool )
+    public void save( final ServerPlayer player, final DimensionPool dimensionPool )
     {
         // Intentionally not implemented
         ModuleHelper_SV1.ThrowOnDeprecatedSave( InventoryModule.class );

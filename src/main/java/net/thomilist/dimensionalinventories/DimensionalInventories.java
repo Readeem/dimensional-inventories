@@ -1,9 +1,12 @@
 package net.thomilist.dimensionalinventories;
 
-import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.entity.event.v1.ServerEntityWorldChangeEvents;
-import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.entity.EntityTravelToDimensionEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.thomilist.dimensionalinventories.compatibility.Compat;
 import net.thomilist.dimensionalinventories.lostandfound.LostAndFound;
 import net.thomilist.dimensionalinventories.lostandfound.LostAndFoundContext;
@@ -20,11 +23,11 @@ import net.thomilist.dimensionalinventories.util.StringHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Mod( "dimensionalinventories" )
 public class DimensionalInventories
-    implements ModInitializer
 {
-    public static final DimensionalInventories INSTANCE = new DimensionalInventories();
-    public static final ModProperties PROPERTIES = new ModProperties( "dimensional-inventories" );
+    public static final ModProperties PROPERTIES = new ModProperties( "dimensionalinventories" );
+    public static DimensionalInventories INSTANCE;
     public static final Logger LOGGER = LoggerFactory.getLogger( DimensionalInventories.PROPERTIES.namePascal() );
     public final StorageVersion storageVersion;
     public final StorageVersionMigration storageVersionMigration;
@@ -32,8 +35,9 @@ public class DimensionalInventories
     public final ModuleRegistry<PlayerModule> playerModules = new ModuleRegistry<>( PlayerModule.class );
     public final DimensionPoolTransitionHandler transitionHandler;
 
-    public DimensionalInventories( final StorageVersion storageVersion )
+    private DimensionalInventories( final StorageVersion storageVersion )
     {
+        DimensionalInventories.INSTANCE = this;
         this.storageVersion = storageVersion;
 
         this.transitionHandler = new DimensionPoolTransitionHandler(
@@ -52,21 +56,18 @@ public class DimensionalInventories
     public DimensionalInventories()
     {
         this( StorageVersion.V2 );
-    }
 
-    @Override
-    public void onInitialize()
-    {
         try ( final LostAndFoundContext LAF = LostAndFound.init(
             "init",
             "base",
             DimensionalInventories.PROPERTIES.id()
         ) )
         {
-            DimensionalInventories.INSTANCE.registerStartupHandlers();
-            DimensionalInventories.INSTANCE.registerPlayerTravelHandler();
-            DimensionalInventories.INSTANCE.registerPlayerRespawnHandler();
-            DimensionalInventories.INSTANCE.registerEntityTravelHandler();
+            this.registerStartupHandlers();
+            this.registerPlayerTravelHandler();
+            this.registerPlayerRespawnHandler();
+            this.registerEntityTravelHandler();
+            new net.thomilist.dimensionalinventories.extension.builtin.DimensionalInventoriesExtensionMain().initialize();
         }
     }
 
@@ -83,76 +84,95 @@ public class DimensionalInventories
 
     private void registerStartupHandlers()
     {
-        ServerLifecycleEvents.SERVER_STARTED.register( server -> {
-            try ( final LostAndFoundContext LAF = LostAndFound.init( "server started" ) )
+        NeoForge.EVENT_BUS.register( this );
+    }
+
+    @SubscribeEvent
+    private void onServerStarted( final ServerStartedEvent event )
+    {
+        try ( final LostAndFoundContext LAF = LostAndFound.init( "server started" ) )
+        {
+            final var server = event.getServer();
+
+            Compat.onServerStarted( server );
+            SavePaths.onServerStarted( server );
+            this.storageVersionMigration.tryMigrate( server );
+
+            for ( final ConfigModule config : this.configModules.get( StorageVersion.latest() ) )
             {
-                Compat.onServerStarted( server );
-                SavePaths.onServerStarted( server );
-                this.storageVersionMigration.tryMigrate( server );
-
-                for ( final ConfigModule config : this.configModules.get( StorageVersion.latest() ) )
-                {
-                    config.loadWithContext();
-                }
-
-                DimensionalInventories.LOGGER.info(
-                    "{} {} initialised",
-                    DimensionalInventories.PROPERTIES.namePretty(),
-                    DimensionalInventories.PROPERTIES.version()
-                );
+                config.loadWithContext();
             }
-        } );
+
+            DimensionalInventories.LOGGER.info(
+                "{} {} initialised",
+                DimensionalInventories.PROPERTIES.namePretty(),
+                DimensionalInventories.PROPERTIES.version()
+            );
+        }
     }
 
     private void registerPlayerTravelHandler()
     {
-        ServerEntityWorldChangeEvents.AFTER_PLAYER_CHANGE_WORLD.register( ( player, origin, destination ) -> {
-            try ( final LostAndFoundContext LAF = LostAndFound.init( "player changed dimension" ) )
-            {
-                final String originDimensionName = origin.getRegistryKey().getValue().toString();
-                final String destinationDimensionName = destination.getRegistryKey().getValue().toString();
+    }
 
-                this.transitionHandler.handlePlayerDimensionChange(
-                    player,
-                    originDimensionName,
-                    destinationDimensionName
-                );
-            }
-        } );
+    @SubscribeEvent
+    private void onPlayerChangedDimension( final PlayerEvent.PlayerChangedDimensionEvent event )
+    {
+        try ( final LostAndFoundContext LAF = LostAndFound.init( "player changed dimension" ) )
+        {
+            final String originDimensionName = event.getFrom().location().toString();
+            final String destinationDimensionName = event.getTo().location().toString();
+
+            this.transitionHandler.handlePlayerDimensionChange(
+                (ServerPlayer) event.getEntity(),
+                originDimensionName,
+                destinationDimensionName
+            );
+        }
     }
 
     private void registerPlayerRespawnHandler()
     {
-        ServerPlayerEvents.AFTER_RESPAWN.register( ( oldPlayer, newPlayer, alive ) -> {
-            try ( final LostAndFoundContext LAF = LostAndFound.init( "player respawned" ) )
-            {
-                final String originDimensionName = oldPlayer.getWorld().getRegistryKey().getValue().toString();
-                final String destinationDimensionName = newPlayer.getWorld().getRegistryKey().getValue().toString();
+    }
 
-                this.transitionHandler.handlePlayerDimensionChange(
-                    newPlayer,
-                    originDimensionName,
-                    destinationDimensionName
-                );
-            }
-        } );
+    @SubscribeEvent
+    private void onPlayerRespawn( final PlayerEvent.Clone event )
+    {
+        try ( final LostAndFoundContext LAF = LostAndFound.init( "player respawned" ) )
+        {
+            final String originDimensionName = event.getOriginal().level().dimension().location().toString();
+            final String destinationDimensionName = event.getEntity().level().dimension().location().toString();
+
+            this.transitionHandler.handlePlayerDimensionChange(
+                (ServerPlayer) event.getEntity(),
+                originDimensionName,
+                destinationDimensionName
+            );
+        }
     }
 
     private void registerEntityTravelHandler()
     {
-        ServerEntityWorldChangeEvents.AFTER_ENTITY_CHANGE_WORLD.register( ( originalEntity, newEntity, origin,
-                                                                            destination ) -> {
-            try ( final LostAndFoundContext LAF = LostAndFound.init( "entity changed dimension" ) )
-            {
-                final String originDimensionName = origin.getRegistryKey().getValue().toString();
-                final String destinationDimensionName = destination.getRegistryKey().getValue().toString();
+    }
 
-                this.transitionHandler.handleEntityDimensionChange(
-                    newEntity,
-                    originDimensionName,
-                    destinationDimensionName
-                );
-            }
-        } );
+    @SubscribeEvent
+    private void onEntityTravelToDimension( final EntityTravelToDimensionEvent event )
+    {
+        if ( event.getEntity() instanceof ServerPlayer )
+        {
+            return;
+        }
+
+        try ( final LostAndFoundContext LAF = LostAndFound.init( "entity changed dimension" ) )
+        {
+            final String originDimensionName = event.getEntity().level().dimension().location().toString();
+            final String destinationDimensionName = event.getDimension().location().toString();
+
+            this.transitionHandler.handleEntityDimensionChange(
+                event.getEntity(),
+                originDimensionName,
+                destinationDimensionName
+            );
+        }
     }
 }

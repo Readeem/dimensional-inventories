@@ -7,7 +7,7 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 
 /**
- * @deprecated This is only intended to hold data of storage version 1 when loading old data during migration. When
+ * @deprecated This is only intended to hold data of storage version 1 when loading old data during migration. Condition
  * loading or saving new data, use {@link DimensionPoolConfigModuleState} instead.
  */
 @Deprecated

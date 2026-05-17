@@ -9,7 +9,7 @@ import net.thomilist.dimensionalinventories.module.builtin.pool.DimensionPoolCon
 import net.thomilist.dimensionalinventories.module.version.StorageVersion;
 
 /**
- * @deprecated This is only intended for use during migration of old data of storage version 1. When loading or saving
+ * @deprecated This is only intended for use during migration of old data of storage version 1. Condition loading or saving
  * new data, use {@link DimensionPoolConfigModule} instead.
  */
 @Deprecated

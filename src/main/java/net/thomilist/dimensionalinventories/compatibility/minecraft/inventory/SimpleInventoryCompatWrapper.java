@@ -1,12 +1,12 @@
 package net.thomilist.dimensionalinventories.compatibility.minecraft.inventory;
 
-import net.minecraft.inventory.SimpleInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.collection.DefaultedList;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.core.NonNullList;
 import net.thomilist.dimensionalinventories.compatibility.CompatWrapper;
 
 public interface SimpleInventoryCompatWrapper
     extends CompatWrapper
 {
-    DefaultedList<ItemStack> getHeldStacks( SimpleInventory simpleInventory );
+    NonNullList<ItemStack> getHeldStacks( SimpleContainer simpleInventory );
 }

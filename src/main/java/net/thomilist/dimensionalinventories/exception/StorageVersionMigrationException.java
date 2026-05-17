@@ -6,7 +6,7 @@ import net.thomilist.dimensionalinventories.module.version.StorageVersion;
 public class StorageVersionMigrationException
     extends RuntimeException
 {
-    private static final String MESSAGE_PREFIX = "Failed to migrate Dimensional Inventories data";
+    private static final String MESSAGE_PREFIX = "Failed to migrate Dimensional ContainerHelper data";
 
     public StorageVersionMigrationException( final StorageVersion from, final StorageVersion to )
     {

@@ -1,9 +1,9 @@
 package net.thomilist.dimensionalinventories.compatibility.minecraft.nbt;
 
-import net.minecraft.entity.effect.StatusEffectInstance;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.registry.RegistryWrapper;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.server.MinecraftServer;
 import net.thomilist.dimensionalinventories.compatibility.LimitedCompatibility;
 
@@ -12,46 +12,46 @@ import net.thomilist.dimensionalinventories.compatibility.LimitedCompatibility;
 public final class NbtCompatWrapper_Minecraft_1_20_5
     implements NbtCompatWrapper
 {
-    private RegistryWrapper.WrapperLookup wrapperLookup;
+    private HolderLookup.Provider wrapperLookup;
 
     @Override
     public void onServerStarted( final MinecraftServer server )
     {
         NbtCompatWrapper.super.onServerStarted( server );
-        this.wrapperLookup = server.getRegistryManager();
+        this.wrapperLookup = server.registryAccess();
     }
 
     @Override
-    public ItemStack toItemStack( final NbtCompound nbtCompound )
+    public ItemStack toItemStack( final CompoundTag nbtCompound )
     {
         if ( nbtCompound.isEmpty() || nbtCompound.getString( "id" ).matches( "^minecraft:air$" ) )
         {
             return ItemStack.EMPTY;
         }
 
-        return ItemStack.fromNbtOrEmpty( this.wrapperLookup, nbtCompound );
+        return ItemStack.parseOptional( this.wrapperLookup, nbtCompound );
     }
 
     @Override
-    public NbtCompound fromItemStack( final ItemStack itemStack )
+    public CompoundTag fromItemStack( final ItemStack itemStack )
     {
         if ( itemStack.isEmpty() )
         {
             return null;
         }
 
-        return (NbtCompound) itemStack.encode( this.wrapperLookup );
+        return (CompoundTag) itemStack.save( this.wrapperLookup );
     }
 
     @Override
-    public StatusEffectInstance toStatusEffectInstance( final NbtCompound nbtCompound )
+    public MobEffectInstance toMobEffectInstance( final CompoundTag nbtCompound )
     {
-        return StatusEffectInstance.fromNbt( nbtCompound );
+        return MobEffectInstance.load( nbtCompound );
     }
 
     @Override
-    public NbtCompound fromStatusEffectInstance( final StatusEffectInstance statusEffectInstance )
+    public CompoundTag fromMobEffectInstance( final MobEffectInstance statusEffectInstance )
     {
-        return (NbtCompound) statusEffectInstance.writeNbt();
+        return (CompoundTag) statusEffectInstance.save();
     }
 }

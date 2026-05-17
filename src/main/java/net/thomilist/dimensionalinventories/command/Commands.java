@@ -6,13 +6,15 @@ import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
-import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
-import net.minecraft.command.argument.DimensionArgumentType;
-import net.minecraft.command.argument.GameModeArgumentType;
-import net.minecraft.server.command.ServerCommandSource;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.text.Text;
-import net.minecraft.world.GameMode;
+import net.minecraft.commands.arguments.DimensionArgument;
+import net.minecraft.commands.arguments.GameModeArgument;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.level.GameType;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.thomilist.dimensionalinventories.DimensionalInventories;
 import net.thomilist.dimensionalinventories.module.builtin.pool.DimensionPool;
 import net.thomilist.dimensionalinventories.module.builtin.pool.DimensionPoolConfigModule;
@@ -22,10 +24,10 @@ import java.util.Optional;
 
 import static com.mojang.brigadier.arguments.BoolArgumentType.bool;
 import static com.mojang.brigadier.arguments.StringArgumentType.word;
-import static net.minecraft.command.argument.DimensionArgumentType.dimension;
-import static net.minecraft.command.argument.GameModeArgumentType.gameMode;
-import static net.minecraft.server.command.CommandManager.argument;
-import static net.minecraft.server.command.CommandManager.literal;
+import static net.minecraft.commands.arguments.DimensionArgument.dimension;
+import static net.minecraft.commands.arguments.GameModeArgument.gameMode;
+import static net.minecraft.commands.Commands.argument;
+import static net.minecraft.commands.Commands.literal;
 
 public class Commands
 {
@@ -46,15 +48,19 @@ public class Commands
     public void register( final DimensionPoolConfigModule dimensionPoolConfig )
     {
         this.dimensionPoolConfig = dimensionPoolConfig;
-
-        CommandRegistrationCallback.EVENT.register( ( dispatcher, registryAccess, environment ) -> this.register(
-            dispatcher ) );
+        NeoForge.EVENT_BUS.register( this );
     }
 
-    public void register( final CommandDispatcher<ServerCommandSource> dispatcher )
+    @SubscribeEvent
+    public void register( final RegisterCommandsEvent event )
+    {
+        this.register( event.getDispatcher() );
+    }
+
+    public void register( final CommandDispatcher<CommandSourceStack> dispatcher )
     {
         dispatcher.register(literal(DimensionalInventoriesCommand.ROOT.toString())
-            .requires(source -> source.hasPermissionLevel(4))
+            .requires(source -> source.hasPermission(4))
             .executes(this::printVersion)
             .then(literal(DimensionalInventoriesCommand.LIST_POOLS.toString())
                 .executes(this::listAllDimensionPools))
@@ -83,19 +89,19 @@ public class Commands
                             .executes(this::setIncrementStatisticsInPool))))));
     }
 
-    public int printVersion( final CommandContext<ServerCommandSource> context )
+    public int printVersion( final CommandContext<CommandSourceStack> context )
     {
-        context.getSource().sendFeedback( () -> Text.literal( Commands.versionString() ), false );
+        context.getSource().sendSuccess( () -> Component.literal( Commands.versionString() ), false );
         return Command.SINGLE_SUCCESS;
     }
 
-    public int listAllDimensionPools( final CommandContext<ServerCommandSource> context )
+    public int listAllDimensionPools( final CommandContext<CommandSourceStack> context )
     {
-        context.getSource().sendFeedback( () -> Text.literal( this.dimensionPoolConfig.state().asString() ), false );
+        context.getSource().sendSuccess( () -> Component.literal( this.dimensionPoolConfig.state().asString() ), false );
         return Command.SINGLE_SUCCESS;
     }
 
-    public int listDimensionPool( final CommandContext<ServerCommandSource> context )
+    public int listDimensionPool( final CommandContext<CommandSourceStack> context )
     {
         final String dimensionPoolId = StringArgumentType.getString(
             context,
@@ -105,20 +111,20 @@ public class Commands
 
         if ( pool.isEmpty() )
         {
-            this.sendFeedback( context, "Unable to fetch pool '" + dimensionPoolId + '\'' );
+            this.sendSuccess( context, "Unable to fetch pool '" + dimensionPoolId + '\'' );
             return -1;
         }
 
-        this.sendFeedback( context, "Dimension pool:" + pool.get().asString() );
+        this.sendSuccess( context, "Dimension pool:" + pool.get().asString() );
         return Command.SINGLE_SUCCESS;
     }
 
-    public void sendFeedback( final CommandContext<ServerCommandSource> context, final String message )
+    public void sendSuccess( final CommandContext<CommandSourceStack> context, final String message )
     {
-        context.getSource().sendFeedback( () -> Text.literal( message ), false );
+        context.getSource().sendSuccess( () -> Component.literal( message ), false );
     }
 
-    public int createDimensionPool( final CommandContext<ServerCommandSource> context )
+    public int createDimensionPool( final CommandContext<CommandSourceStack> context )
     {
         final String dimensionPoolId = StringArgumentType.getString(
             context,
@@ -127,20 +133,20 @@ public class Commands
 
         final DimensionPoolOperationResult result = this.dimensionPoolConfig
             .state()
-            .createPool( dimensionPoolId, GameMode.DEFAULT );
+            .createPool( dimensionPoolId, GameType.DEFAULT_MODE );
 
         if ( !result.success() )
         {
-            this.sendFeedback( context, "Unable to create dimension pool: '" + dimensionPoolId + "' already exists" );
+            this.sendSuccess( context, "Unable to create dimension pool: '" + dimensionPoolId + "' already exists" );
             return -1;
         }
 
         this.dimensionPoolConfig.saveWithContext();
-        this.sendFeedback( context, "Dimension pool '" + dimensionPoolId + "' created" );
+        this.sendSuccess( context, "Dimension pool '" + dimensionPoolId + "' created" );
         return Command.SINGLE_SUCCESS;
     }
 
-    public int removeDimensionPool( final CommandContext<ServerCommandSource> context )
+    public int removeDimensionPool( final CommandContext<CommandSourceStack> context )
     {
         final String dimensionPoolId = StringArgumentType.getString(
             context,
@@ -151,44 +157,44 @@ public class Commands
 
         if ( !result.success() )
         {
-            this.sendFeedback( context, "Unable to remove dimension pool: '" + dimensionPoolId + "' does not exist" );
+            this.sendSuccess( context, "Unable to remove dimension pool: '" + dimensionPoolId + "' does not exist" );
             return -1;
         }
 
         this.dimensionPoolConfig.saveWithContext();
-        this.sendFeedback( context, "Dimension pool '" + dimensionPoolId + "' removed" );
+        this.sendSuccess( context, "Dimension pool '" + dimensionPoolId + "' removed" );
         return Command.SINGLE_SUCCESS;
     }
 
-    public int assignDimensionToPool( final CommandContext<ServerCommandSource> context )
+    public int assignDimensionToPool( final CommandContext<CommandSourceStack> context )
     {
         final String dimensionPoolId = StringArgumentType.getString(
             context,
             DimensionalInventoriesCommand.POOL_ID.toString()
         );
-        final ServerWorld dimension;
+        final ServerLevel dimension;
 
         try
         {
-            dimension = DimensionArgumentType.getDimensionArgument(
+            dimension = DimensionArgument.getDimension(
                 context,
                 DimensionalInventoriesCommand.DIMENSION_NAME.toString()
             );
         }
         catch ( final CommandSyntaxException e )
         {
-            this.sendFeedback( context, "Unable to fetch dimension" );
+            this.sendSuccess( context, "Unable to fetch dimension" );
             return -1;
         }
 
-        final String dimensionName = dimension.getRegistryKey().getValue().toString();
+        final String dimensionName = dimension.dimension().location().toString();
         final DimensionPoolOperationResult result = this.dimensionPoolConfig
             .state()
             .assignDimensionToPool( dimensionName, dimensionPoolId );
 
         if ( !result.success() )
         {
-            this.sendFeedback( context, '\'' + dimensionPoolId + "' is not a valid dimension pool ID" );
+            this.sendSuccess( context, '\'' + dimensionPoolId + "' is not a valid dimension pool ID" );
             return -1;
         }
 
@@ -196,7 +202,7 @@ public class Commands
         {
             case ADD_DIMENSION:
             {
-                this.sendFeedback(
+                this.sendSuccess(
                     context,
                     "Assigned dimension '" + result.target() + "' to dimension pool '" + result.to() +
                     '\''
@@ -205,7 +211,7 @@ public class Commands
             }
             case MOVE_DIMENSION:
             {
-                this.sendFeedback(
+                this.sendSuccess(
                     context,
                     "Moved dimension '" + result.target() + "' from dimension pool '" + result.from() + "' to '" +
                     result.to() + '\''
@@ -214,7 +220,7 @@ public class Commands
             }
             case NO_OP:
             {
-                this.sendFeedback(
+                this.sendSuccess(
                     context,
                     "Dimension '" + result.target() + "' is already in dimension pool '" + result.to() +
                     '\''
@@ -227,28 +233,28 @@ public class Commands
         return Command.SINGLE_SUCCESS;
     }
 
-    public int removeDimensionFromPool( final CommandContext<ServerCommandSource> context )
+    public int removeDimensionFromPool( final CommandContext<CommandSourceStack> context )
     {
         final String dimensionPoolId = StringArgumentType.getString(
             context,
             DimensionalInventoriesCommand.POOL_ID.toString()
         );
-        final ServerWorld dimension;
+        final ServerLevel dimension;
 
         try
         {
-            dimension = DimensionArgumentType.getDimensionArgument(
+            dimension = DimensionArgument.getDimension(
                 context,
                 DimensionalInventoriesCommand.DIMENSION_NAME.toString()
             );
         }
         catch ( final CommandSyntaxException e )
         {
-            this.sendFeedback( context, "Unable to fetch dimension" );
+            this.sendSuccess( context, "Unable to fetch dimension" );
             return -1;
         }
 
-        final String dimensionName = dimension.getRegistryKey().getValue().toString();
+        final String dimensionName = dimension.dimension().location().toString();
 
         final DimensionPoolOperationResult result = this.dimensionPoolConfig
             .state()
@@ -256,7 +262,7 @@ public class Commands
 
         if ( !result.success() )
         {
-            this.sendFeedback( context, '\'' + dimensionPoolId + "' is not a valid dimension pool ID" );
+            this.sendSuccess( context, '\'' + dimensionPoolId + "' is not a valid dimension pool ID" );
             return -1;
         }
 
@@ -264,7 +270,7 @@ public class Commands
         {
             case REMOVE_DIMENSION:
             {
-                this.sendFeedback(
+                this.sendSuccess(
                     context,
                     "Removed dimension '" + dimensionName + "' from dimension pool '" + dimensionPoolId +
                     '\''
@@ -273,7 +279,7 @@ public class Commands
             }
             case NO_OP:
             {
-                this.sendFeedback(
+                this.sendSuccess(
                     context,
                     "Dimension '" + dimensionName + "' not found in dimension pool '" + dimensionPoolId +
                     '\''
@@ -286,24 +292,24 @@ public class Commands
         return Command.SINGLE_SUCCESS;
     }
 
-    public int setDimensionPoolGameMode( final CommandContext<ServerCommandSource> context )
+    public int setDimensionPoolGameMode( final CommandContext<CommandSourceStack> context )
     {
         final String dimensionPoolId = StringArgumentType.getString(
             context,
             DimensionalInventoriesCommand.POOL_ID.toString()
         );
-        final GameMode gameMode;
+        final GameType gameMode;
 
         try
         {
-            gameMode = GameModeArgumentType.getGameMode(
+            gameMode = GameModeArgument.getGameMode(
                 context,
                 DimensionalInventoriesCommand.GAME_MODE_NAME.toString()
             );
         }
         catch ( final CommandSyntaxException e )
         {
-            this.sendFeedback( context, "Invalid game mode" );
+            this.sendSuccess( context, "Invalid game mode" );
             return -1;
         }
 
@@ -311,20 +317,20 @@ public class Commands
 
         if ( pool.isEmpty() )
         {
-            this.sendFeedback( context, "Unable to fetch dimension pool '" + dimensionPoolId + '\'' );
+            this.sendSuccess( context, "Unable to fetch dimension pool '" + dimensionPoolId + '\'' );
             return -1;
         }
 
         pool.get().setGameMode( gameMode );
         this.dimensionPoolConfig.saveWithContext();
-        this.sendFeedback(
+        this.sendSuccess(
             context,
-            "Game mode '" + gameMode.asString() + "' set for dimension pool '" + dimensionPoolId + '\''
+            "Game mode '" + gameMode.getName() + "' set for dimension pool '" + dimensionPoolId + '\''
         );
         return Command.SINGLE_SUCCESS;
     }
 
-    public int setProgressAdvancementsInPool( final CommandContext<ServerCommandSource> context )
+    public int setProgressAdvancementsInPool( final CommandContext<CommandSourceStack> context )
     {
         final String dimensionPoolId = StringArgumentType.getString(
             context,
@@ -339,7 +345,7 @@ public class Commands
 
         if ( pool.isEmpty() )
         {
-            this.sendFeedback( context, "Unable to fetch dimension pool '" + dimensionPoolId + '\'' );
+            this.sendSuccess( context, "Unable to fetch dimension pool '" + dimensionPoolId + '\'' );
             return -1;
         }
 
@@ -348,7 +354,7 @@ public class Commands
 
         if ( progressAdvancements )
         {
-            this.sendFeedback(
+            this.sendSuccess(
                 context,
                 "Players can now progress advancements while in the dimension pool '" + dimensionPoolId +
                 '\''
@@ -356,7 +362,7 @@ public class Commands
         }
         else
         {
-            this.sendFeedback(
+            this.sendSuccess(
                 context,
                 "Players can no longer progress advancements while in the dimension pool '" +
                 dimensionPoolId + '\''
@@ -366,7 +372,7 @@ public class Commands
         return Command.SINGLE_SUCCESS;
     }
 
-    public int setIncrementStatisticsInPool( final CommandContext<ServerCommandSource> context )
+    public int setIncrementStatisticsInPool( final CommandContext<CommandSourceStack> context )
     {
         final String dimensionPoolId = StringArgumentType.getString(
             context,
@@ -381,7 +387,7 @@ public class Commands
 
         if ( pool.isEmpty() )
         {
-            this.sendFeedback( context, "Unable to fetch pool '" + dimensionPoolId + '\'' );
+            this.sendSuccess( context, "Unable to fetch pool '" + dimensionPoolId + '\'' );
             return -1;
         }
 
@@ -390,7 +396,7 @@ public class Commands
 
         if ( incrementStatistics )
         {
-            this.sendFeedback(
+            this.sendSuccess(
                 context,
                 "Players can now increment statistics while in the dimension pool '" + dimensionPoolId +
                 '\''
@@ -398,7 +404,7 @@ public class Commands
         }
         else
         {
-            this.sendFeedback(
+            this.sendSuccess(
                 context,
                 "Players can no longer increment statistics while in the dimension pool '" +
                 dimensionPoolId + '\''

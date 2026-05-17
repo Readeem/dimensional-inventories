@@ -1,32 +1,32 @@
 package net.thomilist.dimensionalinventories.mixin;
 
-import net.minecraft.entity.data.TrackedData;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.nbt.NbtCompound;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.nbt.CompoundTag;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 import org.spongepowered.asm.mixin.gen.Invoker;
 
-@Mixin( PlayerEntity.class )
+@Mixin( Player.class )
 public interface PlayerEntityAccessor
 {
-    @Accessor
+    @Accessor( "timeEntitySatOnShoulder" )
     long getShoulderEntityAddedTime();
 
-    @Accessor( "shoulderEntityAddedTime" )
+    @Accessor( "timeEntitySatOnShoulder" )
     void setShoulderEntityAddedTime( long shoulderEntityAddedTime );
 
-    @Invoker
+    @Invoker( "removeEntitiesOnShoulder" )
     void invokeDropShoulderEntities();
 
-    @Accessor( "LEFT_SHOULDER_ENTITY" )
-    static TrackedData<NbtCompound> getLeftShoulderEntity()
+    @Accessor( "DATA_SHOULDER_LEFT" )
+    static EntityDataAccessor<CompoundTag> getLeftShoulderEntity()
     {
         throw new AssertionError();
     }
 
-    @Accessor( "RIGHT_SHOULDER_ENTITY" )
-    static TrackedData<NbtCompound> getRightShoulderEntity()
+    @Accessor( "DATA_SHOULDER_RIGHT" )
+    static EntityDataAccessor<CompoundTag> getRightShoulderEntity()
     {
         throw new AssertionError();
     }
