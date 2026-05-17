@@ -26,3 +26,10 @@ type = "required"
 versionRange = "[${minecraft_version}]"
 ordering = "NONE"
 side = "BOTH"
+
+[[dependencies.dimensionalinventories]]
+modId = "curios"
+type = "optional"
+versionRange = "[${curios_version},)"
+ordering = "AFTER"
+side = "BOTH"

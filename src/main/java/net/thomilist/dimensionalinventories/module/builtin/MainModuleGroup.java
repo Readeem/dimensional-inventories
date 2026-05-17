@@ -1,6 +1,8 @@
 package net.thomilist.dimensionalinventories.module.builtin;
 
+import net.neoforged.fml.ModList;
 import net.thomilist.dimensionalinventories.module.ModuleGroup;
+import net.thomilist.dimensionalinventories.module.builtin.curios.CuriosModule;
 import net.thomilist.dimensionalinventories.module.builtin.gamemode.GameModeModule;
 import net.thomilist.dimensionalinventories.module.builtin.inventory.InventoryModule;
 import net.thomilist.dimensionalinventories.module.builtin.legacy.inventory.InventoryModule_SV1;
@@ -32,6 +34,11 @@ public final class MainModuleGroup
             StatusModule.class,
             ShoulderEntityModule.class
         );
+
+        if ( ModList.get().isLoaded( "curios" ) )
+        {
+            this.register( CuriosModule.class );
+        }
     }
 
     @SuppressWarnings( "deprecation" )

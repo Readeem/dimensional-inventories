@@ -80,6 +80,10 @@ repositories {
 		name = 'NeoForged'
 		url = 'https://maven.neoforged.net/releases/'
 	}
+	maven {
+		name = 'TheIllusiveC4'
+		url = 'https://maven.theillusivec4.top/'
+	}
 }
 
 dependencies {
@@ -94,19 +98,24 @@ dependencies {
 	// Apache Commons IO to move entire directories
 	implementation "commons-io:commons-io:${project.apache_commons_io_version}"
 
+	// Curios API for optional accessory slot compatibility
+	modCompileOnly "top.theillusivec4.curios:curios-neoforge:${project.curios_version}"
+
 }
 
 tasks.withType(ProcessResources).configureEach {
 	inputs.property("java_version", project.target_java_version)
 	inputs.property("version", project.version)
 	inputs.property("minecraft_version", project.minecraft_version)
+	inputs.property("curios_version", project.curios_version)
 	filteringCharset = "UTF-8"
 
 	filesMatching("META-INF/neoforge.mods.toml") {
 		expand "java_version": project.target_java_version,
 				"version": project.version,
 				"minecraft_version": project.minecraft_version,
-				"neoforge_version": project.neoforge_version
+				"neoforge_version": project.neoforge_version,
+				"curios_version": project.curios_version
 	}
 
 	filesMatching("*.mixins.json") {
